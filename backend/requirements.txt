@@ -2,3 +2,6 @@
 
 fastapi
 uvicorn
+urllib3
+pydantic
+python-multipart

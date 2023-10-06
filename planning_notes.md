@@ -32,5 +32,12 @@ Okay, I think I have enough information to get started. I'll divide the project 
 
 #### Note: Adding a reset database function to the API so I can test from a clean slate.
 
-This brings up testing. I think I'll address that next after standing up the FastAPI server.
+This brings up testing. I think I'll address that next after standing up the FastAPI server. So, the relevant api will be built on the /po directory and look like this:
+- po/get_order_details
+- po/upload_order_details
+- po/reset_database
+
+I'll return at least a simple JSON status for each of these. I'm going to start adding unit tests for these, checking these statuses. I'll expand this out later for the validation of the input form.
+
+#### Note: Adding a shutdown server API call to make it easier to test.
 
