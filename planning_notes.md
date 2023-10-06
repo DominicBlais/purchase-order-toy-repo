@@ -41,3 +41,22 @@ I'll return at least a simple JSON status for each of these. I'm going to start 
 
 #### Note: Adding a shutdown server API call to make it easier to test.
 
+Okay, I think the database code should come next. While all the data could be squashed into one table, is this was an actual application, this almost certainly would be two (or more) tables: one for the order details and one for vendor/order information. I'm going to do it with two tables, especially as I think it'd be practical to grab the "free" data of the upload time and uploader IP address.
+
+So, the order table:
+- id
+- vendor_name
+- order_date
+- upload_date
+- upload_ip_address
+
+And then the details table would be something like:
+- id
+- model_number
+- unit_price
+- quantity
+- (foreign key) order_id
+
+Hmm... as sqlite3 doesn't have a fixed decimal/currency datatype, I think I'll store it as pennies to avoid an "Office Space" situation. I know JavaScript doubles are reasonably safe from currency bitrot, but scar tissue tells me this is good practice in case the database is ever used by something else (spoiler alert: it won't be). So, I'll call it unit_price_cents to be more clear.
+
+I'm going to store the database in a little "db" subdirectory off of the python module.
