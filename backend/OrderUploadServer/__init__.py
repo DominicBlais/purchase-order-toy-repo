@@ -1,6 +1,8 @@
+import csv
 import os
 import signal
 import sys
+import typing
 
 import uvicorn
 import fastapi
@@ -77,6 +79,11 @@ async def redirect_static_to_index():
 
 @app.get("/shutdown")
 async def shutdown():
+    try:
+        global conn
+        conn.close()
+    except:
+        pass
     os.kill(os.getpid(), signal.SIGINT)
     return "nop"
 
@@ -122,8 +129,39 @@ async def po_get_order_details() -> GetOrderDetailsResponseModel:
 
 # note: will need multi-part for file upload
 @app.post("/po/upload_order_details")
-async def po_upload_order_details() -> GenericResponseModel:
-    return {"status": "error",
-            "message": "Not implemented."}
+async def po_upload_order_details(
+    vendor_name: typing.Annotated[str, fastapi.Form(title="Vendor Name", description="The vendor purchasing this order")],
+    order_date: typing.Annotated[int, fastapi.Form(title="Order Date", description="JavaScript timestamp containing the order date", ge=0)],
+    file: typing.Annotated[fastapi.UploadFile, fastapi.File(title="CSV File", description="UTF-8 encoded CSV file with order details. It should include only three columns: Model Number (string), Unit Price (float), and Quantity (integer)")],
+    request: fastapi.Request) -> GenericResponseModel:
+    try:
+        if len(vendor_name.strip()) == 0:
+            return {"status": "error",
+                    "message": "The vendor name cannot be empty."}
+        if order_date < 0:
+            return {"status": "error",
+                    "message": "Invalid order date."}  
+        file_contents = await file.read()
+        details_reader = csv.reader(file_contents.decode(encoding="utf-8").splitlines())
+        current_line = 0
+        try:
+            for row in details_reader:
+                if len(row) != 3:
+                    raise ValueError("Incorrect number of rows.")
+                if len(row[0].strip()) == 0:
+                    raise ValueError("Empty model number.")
+                if current_line != 0 or (row[0].strip().lower() != 'model number' or row[1].strip().lower() != 'unit price' or row[2].strip().lower() != 'quantity'):
+                    float(row[1])
+                    if int(row[2]) < 0:
+                        raise ValueError("Quantity cannot be less than 0.")
+                current_line += 1
+        except Exception as ex:
+            return {"status": "error",
+                    "message": ("The CSV file has invalid data at line %d. It should include only three columns: Model Number (string), Unit Price (float), and Quantity (integer).\nInternal error: %s" % (current_line, str(ex)))}
+        
+        return {"status": "success"}
+    except Exception as ex:
+        return {"status": "error",
+                "message": "A server error occured while uploading the order details."}
 
 

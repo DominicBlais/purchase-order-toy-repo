@@ -60,3 +60,11 @@ And then the details table would be something like:
 Hmm... as sqlite3 doesn't have a fixed decimal/currency datatype, I think I'll store it as pennies to avoid an "Office Space" situation. I know JavaScript doubles are reasonably safe from currency bitrot, but scar tissue tells me this is good practice in case the database is ever used by something else (spoiler alert: it won't be). So, I'll call it unit_price_cents to be more clear.
 
 I'm going to store the database in a little "db" subdirectory off of the python module.
+
+Alright, last part of the server: the upload CSV function. The spec says to validate the CSV on the backend and send validation errors up to the client (along with empty vendor_name or order_date). This should be reasonably straight-forward. I'll create a couple test CSV files as well.
+
+Hmm... one decision is whether to completely reject a CSV file if any of it is invalid, or to allow the valid rows to be added. I think I'll just kick the whole thing back if there are any errors, since it's always a pain to undo a typo otherwise.
+
+For validation I will check to make sure the types are right and that there are a correct number of columns. I think I will check if the first row is a header and allow that if so.
+
+Just remembered that FastAPI's docs include a built-in function test apparatus. Such a nice feature.
