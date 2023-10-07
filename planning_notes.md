@@ -68,3 +68,5 @@ Hmm... one decision is whether to completely reject a CSV file if any of it is i
 For validation I will check to make sure the types are right and that there are a correct number of columns. I think I will check if the first row is a header and allow that if so.
 
 Just remembered that FastAPI's docs include a built-in function test apparatus. Such a nice feature.
+
+Okay, low on time. Going to use React with... antd. Should be pretty fast. It's TS, but that will work fine. Got to move on it now.
