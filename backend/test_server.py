@@ -19,6 +19,21 @@ class TestOrderUploadServer(unittest.TestCase):
         resp_json = urllib3.request("GET", "http://127.0.0.1:8169/po/get_order_details").json()
         self.assertEqual(resp_json["status"], "success")
 
+    def test_upload_order_details_good(self):
+        resp_json = urllib3.request("GET", "http://127.0.0.1:8169/po/reset_database").json()
+        self.assertEqual(resp_json["status"], "success")
+        with open(".." + os.sep + "test_csv_files" + os.sep + "good_1.csv") as csvfile:
+            resp_json = urllib3.request("POST", "http://127.0.0.1:8169/po/upload_order_details",
+                                    fields={"vendor_name":"Testing", "order_date":"100", "file":("good_1.csv", csvfile.read())}).json()
+            self.assertEqual(resp_json["status"], "success")
+        resp_json = urllib3.request("GET", "http://127.0.0.1:8169/po/get_order_details").json()
+        self.assertEqual(resp_json["status"], "success")
+        self.assertEqual(resp_json["details"][0]["vendor_name"], "Testing")
+        self.assertEqual(resp_json["details"][0]["order_date"], 100)
+        self.assertEqual(resp_json["details"][0]["model_number"], "Model #1")
+        self.assertEqual(resp_json["details"][0]["unit_price"], 4.5)
+        self.assertEqual(resp_json["details"][0]["quantity"], 10)
+
     def test_upload_order_details_good1(self):
         with open(".." + os.sep + "test_csv_files" + os.sep + "good_1.csv") as csvfile:
             resp_json = urllib3.request("POST", "http://127.0.0.1:8169/po/upload_order_details",

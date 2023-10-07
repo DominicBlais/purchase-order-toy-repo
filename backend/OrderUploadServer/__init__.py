@@ -2,6 +2,7 @@ import csv
 import os
 import signal
 import sys
+import time
 import typing
 
 import uvicorn
@@ -109,7 +110,7 @@ async def po_get_order_details() -> GetOrderDetailsResponseModel:
     try:
         global conn
         cur = conn.cursor()
-        cur.execute("""SELECT orders.id, orders.vendor_name, orders.order_date, details.id, details.unit_price_cents, details.quantity FROM po_order_details details INNER JOIN po_orders orders ON details.order_id=orders.id ORDER BY orders.order_date, details.model_number;""")
+        cur.execute("""SELECT orders.id, orders.vendor_name, orders.order_date, details.id, details.model_number, details.unit_price_cents, details.quantity FROM po_order_details details INNER JOIN po_orders orders ON details.order_id=orders.id ORDER BY orders.order_date, details.model_number;""")
         results = []
         for row in cur.fetchall():
             results.append({"order_id": row[0],
@@ -123,6 +124,7 @@ async def po_get_order_details() -> GetOrderDetailsResponseModel:
         return {"status": "success",
                 "details": results}
     except Exception as ex:
+        print(ex)
         return {"status": "error",
                 "message": "A server error occured while retrieving order details."}
 
@@ -134,6 +136,7 @@ async def po_upload_order_details(
     order_date: typing.Annotated[int, fastapi.Form(title="Order Date", description="JavaScript timestamp containing the order date", ge=0)],
     file: typing.Annotated[fastapi.UploadFile, fastapi.File(title="CSV File", description="UTF-8 encoded CSV file with order details. It should include only three columns: Model Number (string), Unit Price (float), and Quantity (integer)")],
     request: fastapi.Request) -> GenericResponseModel:
+    global conn
     try:
         if len(vendor_name.strip()) == 0:
             return {"status": "error",
@@ -159,8 +162,34 @@ async def po_upload_order_details(
             return {"status": "error",
                     "message": ("The CSV file has invalid data at line %d. It should include only three columns: Model Number (string), Unit Price (float), and Quantity (integer).\nInternal error: %s" % (current_line, str(ex)))}
         
+        cur = conn.cursor()
+        cur.execute("INSERT INTO po_orders(vendor_name, order_date, upload_date, upload_ip_address) VALUES (:vendor_name, :order_date, :upload_date, :upload_ip_address);",
+                    {"vendor_name": vendor_name,
+                     "order_date": order_date / 1000.0,
+                     "upload_date": time.time(),
+                     "upload_ip_address": request.client.host})
+        order_id = cur.lastrowid
+        details = []
+        details_reader = csv.reader(file_contents.decode(encoding="utf-8").splitlines())
+        current_line = 0
+        for row in details_reader:
+            if current_line == 0 and (row[0].strip().lower() == 'model number' or row[1].strip().lower() == 'unit price' or row[2].strip().lower() == 'quantity'):
+                continue
+            details.append({"order_id": order_id,
+                            "model_number": row[0].strip(),
+                            "unit_price_cents": round(float(row[1].strip()) * 100.0),
+                            "quantity": int(row[2].strip()) })
+            current_line += 1
+        cur.executemany("INSERT INTO po_order_details(order_id, model_number, unit_price_cents, quantity) VALUES (:order_id, :model_number, :unit_price_cents, :quantity);", details)
+        conn.commit()
+        cur.close()
         return {"status": "success"}
     except Exception as ex:
+        print(ex)
+        try:
+            conn.rollback()
+        except:
+            pass
         return {"status": "error",
                 "message": "A server error occured while uploading the order details."}
 
